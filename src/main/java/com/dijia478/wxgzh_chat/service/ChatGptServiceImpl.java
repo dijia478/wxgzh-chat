@@ -8,6 +8,7 @@ import com.dijia478.wxgzh_chat.entity.MessageSendBody;
 import com.dijia478.wxgzh_chat.utils.CacheUtils;
 import com.dijia478.wxgzh_chat.utils.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -37,15 +38,15 @@ public class ChatGptServiceImpl implements ChatGptService {
 
     @Override
     public String reply(String messageContent, String userKey) {
-        Integer returnLength = CacheUtils.getOneHours(userKey);
-        if (returnLength != null && returnLength > 1000) {
+        Integer returnLength = CacheUtils.getOneDay(userKey);
+        if (returnLength != null && returnLength > 3000) {
             return "您的OpenAI免费额度1000字节已用完，请24小时后再体验。";
         }
 
         // 默认信息
         String message = "Human:你好\nChatGPT:你好\n";
         if (CacheUtils.hasKey(messageContent)) {
-            return CacheUtils.get(messageContent).replace("ChatGPT:", "").trim();
+            return CacheUtils.get(messageContent);
         }
 
         if (CacheUtils.hasKey(userKey)) {
@@ -61,20 +62,25 @@ public class ChatGptServiceImpl implements ChatGptService {
         if (messageResponseBody != null) {
             if (!CollectionUtils.isEmpty(messageResponseBody.getChoices())) {
                 String replyText = messageResponseBody.getChoices().get(0).getText();
+                replyText = StringUtils.removeStart(replyText, "\n");
+                replyText = StringUtils.removeStart(replyText, "Null");
+                replyText = StringUtils.removeStart(replyText, "ChatGPT:");
+                replyText = StringUtils.removeStart(replyText, "ChatGPT：");
+
                 CacheUtils.set(messageContent, replyText);
 
                 int length = replyText.length();
-                Integer oldLength = CacheUtils.getOneHours(userKey);
+                Integer oldLength = CacheUtils.getOneDay(userKey);
                 if (oldLength != null) {
                     length += oldLength;
                 }
-                CacheUtils.setOneHours(userKey, length);
+                CacheUtils.setOneDay(userKey, length);
 
                 // 拼接字符,设置回去
                 String msg = CacheUtils.get(userKey);
                 msg = msg + Ai + replyText + "\n";
                 CacheUtils.set(userKey, msg);
-                return replyText.replace("ChatGPT:", "").trim();
+                return replyText;
             }
         }
         try {
