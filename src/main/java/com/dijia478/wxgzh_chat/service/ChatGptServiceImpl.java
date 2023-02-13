@@ -54,7 +54,7 @@ public class ChatGptServiceImpl implements ChatGptService {
             message = CacheUtils.get(userKey);
         }
         message = message + "Human:" + messageContent + "\n";
-
+        CacheUtils.set(userKey, message);
         // 调用接口获取数据
         JSONObject obj = getReplyFromGPT(message);
         MessageResponseBody messageResponseBody = JSONObject.toJavaObject(obj, MessageResponseBody.class);
@@ -66,6 +66,10 @@ public class ChatGptServiceImpl implements ChatGptService {
                 replyText = StringUtils.removeStart(replyText, "Null");
                 replyText = StringUtils.removeStart(replyText, "ChatGPT:");
                 replyText = StringUtils.removeStart(replyText, "ChatGPT：");
+                replyText = StringUtils.removeStart(replyText, "GPT:");
+                replyText = StringUtils.removeStart(replyText, "GPT：");
+                replyText = StringUtils.removeStart(replyText, "GPT-3:");
+                replyText = StringUtils.removeStart(replyText, "GPT-3：");
 
                 CacheUtils.set(messageContent, replyText);
 
@@ -88,7 +92,7 @@ public class ChatGptServiceImpl implements ChatGptService {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        return "OpenAI免费配额已用完，请稍后再试";
+        return "系统OpenAI免费配额已用完，请稍后再试";
     }
 
     private JSONObject getReplyFromGPT(String message) {
