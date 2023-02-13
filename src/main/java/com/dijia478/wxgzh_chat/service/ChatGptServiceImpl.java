@@ -37,6 +37,11 @@ public class ChatGptServiceImpl implements ChatGptService {
 
     @Override
     public String reply(String messageContent, String userKey) {
+        Integer returnLength = CacheUtils.getOneHours(userKey);
+        if (returnLength != null && returnLength > 1000) {
+            return "您的OpenAI免费额度1000字节已用完，请24小时后再体验。";
+        }
+
         // 默认信息
         String message = "Human:你好\nChatGPT:你好\n";
         if (CacheUtils.hasKey(messageContent)) {
@@ -57,6 +62,13 @@ public class ChatGptServiceImpl implements ChatGptService {
             if (!CollectionUtils.isEmpty(messageResponseBody.getChoices())) {
                 String replyText = messageResponseBody.getChoices().get(0).getText();
                 CacheUtils.set(messageContent, replyText);
+
+                int length = replyText.length();
+                Integer oldLength = CacheUtils.getOneHours(userKey);
+                if (oldLength != null) {
+                    length += oldLength;
+                }
+                CacheUtils.setOneHours(userKey, length);
 
                 // 拼接字符,设置回去
                 String msg = CacheUtils.get(userKey);
