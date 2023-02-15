@@ -96,7 +96,7 @@ public class WxgzhMsgController {
                         .TEXT()
                         .toUser(fromUser)
                         .fromUser(touser)
-                        .content("谢谢你长的这么好看还关注我~~我是贴心的ChatGPT，有问题尽管提问我好了！！如果出现“该公众号提供的服务出现故障，请稍后再试”错误，报错后等10秒，立马将原文重新发送就可以。")
+                        .content("谢谢你长的这么好看还关注我~~我是贴心的ChatGPT聊天机器人，有问题尽管提问我好了！！\n如果出现“该公众号提供的服务出现故障，请稍后再试”，报错后等10秒，将原文重新发送就可以。")
                         .build();
 
                 String result = texts.toXml();
