@@ -88,12 +88,15 @@ public class ChatGptServiceImpl implements ChatGptService {
                 return replyText;
             }
         }
+        if (obj.toJSONString().contains("You exceeded your current quota")) {
+            return "系统OpenAI免费配额已用完，请稍后再试";
+        }
         try {
             Thread.sleep(10000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        return "系统OpenAI免费配额已用完，请稍后再试";
+        return "OpenAI服务器错误，请稍后再试";
     }
 
     private JSONObject getReplyFromGPT(String message) {

@@ -13,8 +13,8 @@ public class HttpUtil {
     private static final OkHttpClient client = new OkHttpClient.Builder()
             .retryOnConnectionFailure(true)
             .connectionPool(new ConnectionPool(200, 5, TimeUnit.MINUTES))
-            .connectTimeout(60L, TimeUnit.SECONDS)
-            .readTimeout(60L, TimeUnit.SECONDS)
+            .connectTimeout(600L, TimeUnit.SECONDS)
+            .readTimeout(600L, TimeUnit.SECONDS)
             .build();
 
 
