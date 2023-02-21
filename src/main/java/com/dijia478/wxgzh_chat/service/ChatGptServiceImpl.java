@@ -40,7 +40,7 @@ public class ChatGptServiceImpl implements ChatGptService {
     public String reply(String messageContent, String userKey) {
         Integer returnLength = CacheUtils.getOneDay(userKey);
         if (returnLength != null && returnLength > 3000) {
-            return "您的OpenAI免费额度1000字节已用完，请24小时后再体验。";
+            return "您的OpenAI免费额度1000字节已用完，请2小时后再体验。";
         }
 
         // 默认信息

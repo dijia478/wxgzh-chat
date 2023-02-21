@@ -77,15 +77,6 @@ public class WxgzhMsgController {
         String text = message.getContent();
         log.info("文本消息：" + text);
 
-        // if (CacheUtils.get(fromUser + text + message.getMsgId()) != null) {
-        //     try {
-        //         Thread.sleep(3000);
-        //     } catch (InterruptedException e) {
-        //         e.printStackTrace();
-        //     }
-        // }
-        // CacheUtils.set(fromUser + text + message.getMsgId(), "0");
-
         // 事件推送
         if (messageType.equals("event")) {
             log.debug("event：" + message.getEvent());
@@ -96,7 +87,7 @@ public class WxgzhMsgController {
                         .TEXT()
                         .toUser(fromUser)
                         .fromUser(touser)
-                        .content("谢谢你长的这么好看还关注我~~我是贴心的ChatGPT聊天机器人，有问题尽管提问我好了！！\n如果出现“该公众号提供的服务出现故障，请稍后再试”，报错后等10秒，将原文重新发送就可以。")
+                        .content("谢谢你长的这么好看还关注我~~我是贴心的ChatGPT聊天机器人，有问题尽管提问我好了！！\n\n如果出现“该公众号提供的服务出现故障，请稍后再试”，报错后等20秒，将原文重新发送一般就好了。")
                         .build();
 
                 String result = texts.toXml();

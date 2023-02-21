@@ -10,13 +10,13 @@ public class CacheUtils {
     private static final Cache<String, String> CACHE = Caffeine.newBuilder()
             .initialCapacity(10000)
             .maximumSize(100000)
-            .expireAfterWrite(3, TimeUnit.MINUTES)
+            .expireAfterWrite(5, TimeUnit.MINUTES)
             .build();
 
     private static final Cache<String, Integer> CACHE_ONE_DAY = Caffeine.newBuilder()
             .initialCapacity(1000)
             .maximumSize(10000)
-            .expireAfterWrite(24, TimeUnit.HOURS)
+            .expireAfterWrite(2, TimeUnit.HOURS)
             .build();
 
     public static void setOneDay(String key, Integer value) {
