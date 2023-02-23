@@ -54,6 +54,10 @@ public class ChatGptServiceImpl implements ChatGptService {
             message = CacheUtils.get(userKey);
         }
         message = message + "Human:" + messageContent + "\n";
+        if (message.length() > 2000) {
+            return "您的对话太过频繁，请3分钟后再试。";
+        }
+
         // 调用接口获取数据
         JSONObject obj = getReplyFromGPT(message);
         MessageResponseBody messageResponseBody = JSONObject.toJavaObject(obj, MessageResponseBody.class);
@@ -81,10 +85,8 @@ public class ChatGptServiceImpl implements ChatGptService {
                 CacheUtils.setOneDay(userKey, length);
 
                 // 拼接字符,设置回去
+                message = message + Ai + replyText + "\n";
                 CacheUtils.set(userKey, message);
-                String msg = CacheUtils.get(userKey);
-                msg = msg + Ai + replyText + "\n";
-                CacheUtils.set(userKey, msg);
                 return replyText;
             }
         }

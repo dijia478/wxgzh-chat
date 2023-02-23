@@ -10,7 +10,7 @@ public class CacheUtils {
     private static final Cache<String, String> CACHE = Caffeine.newBuilder()
             .initialCapacity(10000)
             .maximumSize(100000)
-            .expireAfterWrite(5, TimeUnit.MINUTES)
+            .expireAfterWrite(3, TimeUnit.MINUTES)
             .build();
 
     private static final Cache<String, Integer> CACHE_ONE_DAY = Caffeine.newBuilder()
