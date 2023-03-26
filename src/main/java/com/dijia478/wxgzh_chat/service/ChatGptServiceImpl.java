@@ -45,12 +45,13 @@ public class ChatGptServiceImpl implements ChatGptService {
         }
 
         // 获取历史对话内容
-        List<ChatMessage> messages = CacheUtils.CACHE_3.getIfPresent(userKey);
-        messages = messages == null ? new ArrayList<>() : messages;
-        messages.add(new ChatMessage("user", messageContent));
+        List<ChatMessage> oldMessages = CacheUtils.CACHE_3.getIfPresent(userKey);
+        oldMessages = oldMessages == null ? new ArrayList<>() : oldMessages;
+        List<ChatMessage> newMessages = new ArrayList<>(oldMessages);
+        newMessages.add(new ChatMessage("user", messageContent));
 
         // 调用接口获取数据
-        JSONObject jsonObject = getRespFromGPT(messages);
+        JSONObject jsonObject = getRespFromGPT(newMessages);
         if (!jsonObject.containsKey("choices")) {
             return "OpenAI服务器发送错误，请稍后再试";
         }
@@ -73,8 +74,9 @@ public class ChatGptServiceImpl implements ChatGptService {
         CacheUtils.CACHE_1.put(userKey, length);
 
         // 存储用户的历史对话内容
-        messages.add(context);
-        CacheUtils.CACHE_3.put(userKey, messages);
+        oldMessages.add(new ChatMessage("user", messageContent));
+        oldMessages.add(context);
+        CacheUtils.CACHE_3.put(userKey, oldMessages);
         return replyText;
     }
 
@@ -84,7 +86,7 @@ public class ChatGptServiceImpl implements ChatGptService {
         header.put("Content-Type", "application/json");
         ChatCompletionRequest reqBody = buildReqBody(messages);
         String body = JSON.toJSONString(reqBody, SerializerFeature.PrettyFormat, SerializerFeature.WriteMapNullValue, SerializerFeature.WriteDateUseDateFormat);
-        log.info("请求的数据：" + body);
+        log.info("请求的数据：" + JSON.toJSONString(messages));
         String data = HttpUtil.doPostJson(url, body, header);
         log.info("响应的数据：" + data);
         return JSON.parseObject(data);
