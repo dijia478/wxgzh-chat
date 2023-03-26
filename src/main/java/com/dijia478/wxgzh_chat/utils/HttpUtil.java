@@ -2,6 +2,8 @@ package com.dijia478.wxgzh_chat.utils;
 
 import okhttp3.*;
 
+import java.net.InetSocketAddress;
+import java.net.Proxy;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -11,6 +13,7 @@ import java.util.concurrent.TimeUnit;
 public class HttpUtil {
 
     private static final OkHttpClient client = new OkHttpClient.Builder()
+            .proxy(new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", 5003)))
             .retryOnConnectionFailure(true)
             .connectionPool(new ConnectionPool(200, 5, TimeUnit.MINUTES))
             .connectTimeout(600L, TimeUnit.SECONDS)

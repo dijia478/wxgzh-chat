@@ -1,10 +1,9 @@
 server:
   port: 8078
 
-openapi:
+openai:
+  url: https://api.openai.com/v1/chat/completions
   key:
 
 weixin:
   token:
-
-

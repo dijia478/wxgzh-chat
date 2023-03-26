@@ -3,15 +3,15 @@ package com.dijia478.wxgzh_chat.service;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.serializer.SerializerFeature;
-import com.dijia478.wxgzh_chat.entity.MessageResponseBody;
-import com.dijia478.wxgzh_chat.entity.MessageSendBody;
+import com.dijia478.wxgzh_chat.entity.ChatCompletionChoice;
+import com.dijia478.wxgzh_chat.entity.ChatCompletionRequest;
+import com.dijia478.wxgzh_chat.entity.ChatMessage;
 import com.dijia478.wxgzh_chat.utils.CacheUtils;
 import com.dijia478.wxgzh_chat.utils.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,90 +25,66 @@ import java.util.Map;
 @Service
 public class ChatGptServiceImpl implements ChatGptService {
 
-    /**
-     * 接口请求地址
-     */
-    private final String url = "https://api.openai.com/v1/completions";
-    /**
-     * 定义ai的名字
-     */
-    private final String Ai = "ChatGPT:";
-    @Value("${openapi.key}")
+    @Value("${openai.url}")
+    private String url;
+
+    @Value("${openai.key}")
     private String apiKey;
 
     @Override
     public String reply(String messageContent, String userKey) {
-        Integer returnLength = CacheUtils.getOneDay(userKey);
-        if (returnLength != null && returnLength > 3000) {
-            return "您的OpenAI免费额度1000字节已用完，请2小时后再体验。";
+        // 对用户使用进行限流
+        Integer returnLength = CacheUtils.CACHE_1.getIfPresent(userKey);
+        if (returnLength != null && returnLength > 2000) {
+            return "您的OpenAI免费额度2000字符已用完，请2小时后再体验。";
         }
 
-        // 默认信息
-        String message = "Human:你好\nChatGPT:你好\n";
-        if (CacheUtils.hasKey(messageContent)) {
-            return CacheUtils.get(messageContent);
+        // 防止重复发送消息
+        if (CacheUtils.CACHE_2.getIfPresent(messageContent) != null) {
+            return CacheUtils.CACHE_2.getIfPresent(messageContent);
         }
 
-        if (CacheUtils.hasKey(userKey)) {
-            // 如果存在key，拿出来
-            message = CacheUtils.get(userKey);
-        }
-        message = message + "Human:" + messageContent + "\n";
-        if (message.length() > 2000) {
-            return "您的对话太过频繁，请3分钟后再试。";
-        }
+        // 获取历史对话内容
+        List<ChatMessage> messages = CacheUtils.CACHE_3.getIfPresent(userKey);
+        messages = messages == null ? new ArrayList<>() : messages;
+        messages.add(new ChatMessage("user", messageContent));
 
         // 调用接口获取数据
-        JSONObject obj = getReplyFromGPT(message);
-        MessageResponseBody messageResponseBody = JSONObject.toJavaObject(obj, MessageResponseBody.class);
-        // 存储对话内容，让机器人更加智能
-        if (messageResponseBody != null) {
-            if (!CollectionUtils.isEmpty(messageResponseBody.getChoices())) {
-                String replyText = messageResponseBody.getChoices().get(0).getText();
-                replyText = StringUtils.removeStart(replyText, "\n");
-                replyText = StringUtils.removeStart(replyText, "Null");
-                replyText = StringUtils.removeStart(replyText, "ChatGPT:");
-                replyText = StringUtils.removeStart(replyText, "ChatGPT：");
-                replyText = StringUtils.removeStart(replyText, "GPT:");
-                replyText = StringUtils.removeStart(replyText, "GPT：");
-                replyText = StringUtils.removeStart(replyText, "GPT-3:");
-                replyText = StringUtils.removeStart(replyText, "GPT-3：");
-                replyText = StringUtils.removeStart(replyText, "\n");
-
-                CacheUtils.set(messageContent, replyText);
-
-                int length = replyText.length();
-                Integer oldLength = CacheUtils.getOneDay(userKey);
-                if (oldLength != null) {
-                    length += oldLength;
-                }
-                CacheUtils.setOneDay(userKey, length);
-
-                // 拼接字符,设置回去
-                message = message + Ai + replyText + "\n";
-                CacheUtils.set(userKey, message);
-                return replyText;
-            }
+        JSONObject jsonObject = getRespFromGPT(messages);
+        if (!jsonObject.containsKey("choices")) {
+            return "OpenAI服务器发送错误，请稍后再试";
         }
-        if (obj.toJSONString().contains("You exceeded your current quota")) {
-            return "系统OpenAI免费配额已用完，请稍后再试";
+        List<ChatCompletionChoice> choices = jsonObject.getJSONArray("choices").toJavaList(ChatCompletionChoice.class);
+        ChatMessage context = new ChatMessage(choices.get(0).getMessage().getRole(), choices.get(0).getMessage().getContent());
+
+        String replyText = context.getContent();
+        replyText = StringUtils.removeStart(replyText, "\n");
+        replyText = StringUtils.removeEnd(replyText, "\n");
+
+        // 存储请求文本的响应内容
+        CacheUtils.CACHE_2.put(messageContent, replyText);
+
+        // 存储用户的已回复字符长度
+        int length = replyText.length();
+        Integer oldLength = CacheUtils.CACHE_1.getIfPresent(userKey);
+        if (oldLength != null) {
+            length += oldLength;
         }
-        try {
-            Thread.sleep(10000);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        return "OpenAI服务器错误，请稍后再试";
+        CacheUtils.CACHE_1.put(userKey, length);
+
+        // 存储用户的历史对话内容
+        messages.add(context);
+        CacheUtils.CACHE_3.put(userKey, messages);
+        return replyText;
     }
 
-    private JSONObject getReplyFromGPT(String message) {
-        Map<String, String> header = new HashMap();
+    private JSONObject getRespFromGPT(List<ChatMessage> messages) {
+        Map<String, String> header = new HashMap<>();
         header.put("Authorization", "Bearer " + apiKey);
         header.put("Content-Type", "application/json");
-        MessageSendBody messageSendBody = buildConfig();
-        messageSendBody.setPrompt(message);
-        String body = JSON.toJSONString(messageSendBody, SerializerFeature.PrettyFormat, SerializerFeature.WriteMapNullValue, SerializerFeature.WriteDateUseDateFormat);
-        log.info("请求的数据：" + message);
+        ChatCompletionRequest reqBody = buildReqBody(messages);
+        String body = JSON.toJSONString(reqBody, SerializerFeature.PrettyFormat, SerializerFeature.WriteMapNullValue, SerializerFeature.WriteDateUseDateFormat);
+        log.info("请求的数据：" + body);
         String data = HttpUtil.doPostJson(url, body, header);
         log.info("响应的数据：" + data);
         return JSON.parseObject(data);
@@ -119,18 +95,18 @@ public class ChatGptServiceImpl implements ChatGptService {
      *
      * @return
      */
-    private MessageSendBody buildConfig() {
-        MessageSendBody messageSendBody = new MessageSendBody();
-        messageSendBody.setModel("text-davinci-003");
-        messageSendBody.setTemperature(0.9);
-        messageSendBody.setMaxTokens(1000);
-        messageSendBody.setTopP(1);
-        messageSendBody.setFrequencyPenalty(0.0);
-        messageSendBody.setPresencePenalty(0.6);
-        List<String> stop = new ArrayList<>();
-        stop.add(" ChatGPT:");
-        stop.add(" Human:");
-        messageSendBody.setStop(stop);
-        return messageSendBody;
+    private ChatCompletionRequest buildReqBody(List<ChatMessage> messages) {
+        return ChatCompletionRequest.builder()
+                .model("gpt-3.5-turbo")
+                .messages(messages)
+                .temperature(1.0)
+                .n(1)
+                .stream(false)
+                .max_tokens(500)
+                .presence_penalty(0.0)
+                .frequency_penalty(0.6)
+                .user("user")
+                .build();
     }
+
 }
