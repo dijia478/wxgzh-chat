@@ -35,8 +35,8 @@ public class ChatGptServiceImpl implements ChatGptService {
     public String reply(String messageContent, String userKey) {
         // 对用户使用进行限流
         Integer returnLength = CacheUtils.CACHE_1.getIfPresent(userKey);
-        if (returnLength != null && returnLength > 2000) {
-            return "您的OpenAI免费额度2000字符已用完，请2小时后再体验。";
+        if (returnLength != null && returnLength > 3000) {
+            return "您的OpenAI免费额度1000字符已用完，请2小时后再体验。";
         }
 
         // 防止重复发送消息
@@ -53,7 +53,7 @@ public class ChatGptServiceImpl implements ChatGptService {
         // 调用接口获取数据
         JSONObject jsonObject = getRespFromGPT(newMessages);
         if (!jsonObject.containsKey("choices")) {
-            return "OpenAI服务器发送错误，请稍后再试";
+            return "OpenAI服务器发生错误，请稍后再试";
         }
         List<ChatCompletionChoice> choices = jsonObject.getJSONArray("choices").toJavaList(ChatCompletionChoice.class);
         ChatMessage context = new ChatMessage(choices.get(0).getMessage().getRole(), choices.get(0).getMessage().getContent());
@@ -76,6 +76,10 @@ public class ChatGptServiceImpl implements ChatGptService {
         // 存储用户的历史对话内容
         oldMessages.add(new ChatMessage("user", messageContent));
         oldMessages.add(context);
+        // 模型最大限制4097个token，超了要删除过去的对话
+        while (JSON.toJSONString(oldMessages).length() > 3500) {
+            oldMessages.remove(0);
+        }
         CacheUtils.CACHE_3.put(userKey, oldMessages);
         return replyText;
     }
